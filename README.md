@@ -1,33 +1,42 @@
 # PIONEER-client
 
-## 重构后的目录架构
+PIONEER-client 是 RoboMaster 自定义客户端实现，基于 Reflex + MQTT + Protobuf，包含：
 
-- `mqtt-broker/`：MQTT Broker 服务目录（仅 broker 功能）
-- `rm-server/`：RM 服务端目录（broker 的订阅者 + 发布者）
-- `reflex-cil/`：自定义客户端前端（Reflex），订阅下行并发布上行
-- `protocol/`：共享 Protobuf 协议定义
+- 协议桥接与界面联动
+- 图传接收与网页播放
+- 联调调试脚本
 
-## 启动顺序
+## 当前目录结构
 
-1. 启动 Broker：
+- debug/
+	- debug_video.py
+	- 用于调试图传链路：监听 UDP 3334，并作为客户端连接 WS 8765 打印数据摘要
+- protocol/
+	- messages.proto
+	- messages_pb2.py
+	- Python 侧协议定义
+- reflex-cil/
+	- Reflex 客户端工程
+	- 包含 UI、MQTT 协议桥、视频服务、静态资源
+- require.md
+	- 客户端行为要求说明
+
+## 运行依赖
+
+- Python 3.10+
+- Node.js 18+（用于 SharkDataSever 测试端）
+- ffmpeg（需要在 PATH 中）
+
+## 联调启动顺序
+
+1. 启动 SharkDataSever（提供 MQTT + UDP 视频模拟流）
 
 ```powershell
-cd CustomClient\PIONEER-client\mqtt-broker
-.\setup_broker_env.ps1
-.\run_broker.ps1
+cd CustomClient\SharkDataSever
+.\runner.bat
 ```
 
-说明：`mqtt-broker` 使用独立 `.venv-broker`，避免与 `reflex-cil` 的 `click` 依赖冲突。
-
-2. 启动 RM 服务：
-
-```powershell
-cd CustomClient\PIONEER-client\rm-server
-pip install -r requirements.txt
-python rm_service.py --host 127.0.0.1 --port 3333
-```
-
-3. 启动 Reflex 客户端：
+2. 启动 Reflex 客户端
 
 ```powershell
 cd CustomClient\PIONEER-client\reflex-cil
@@ -35,18 +44,38 @@ pip install -r requirements.txt
 reflex run
 ```
 
-## 重构经验
+3. 可选：启动图传调试脚本（用于确认 UDP/WS 数据是否在流动）
 
-- Broker 与 Reflex 使用独立环境：
-	- `mqtt-broker` 使用 `.venv-broker`
-	- Reflex/RM 使用主 `.venv`
-	- 解决 `amqtt/typer` 与 `reflex` 的 `click` 版本冲突。
-- paho-mqtt 回调必须兼容 v1/v2：
-	- 客户端构造优先 `CallbackAPIVersion.VERSION2`
-	- 回调签名使用 `properties=None` 兜底。
-- 状态发布采用固定频率：
-	- 时间与常规状态分频发布，避免 UI 抖动与状态覆盖。
-- 前端按钮可用性由协议状态驱动：
-	- 复活类看 `RobotRespawnStatus`
-	- 远程补给看 `RobotDynamicStatus`
-	- 飞镖灯态看 `DartSelectTargetStatusSync.open`。
+```powershell
+cd CustomClient\PIONEER-client\debug
+python .\debug_video.py
+```
+
+## 默认端口
+
+- MQTT：3333
+- UDP 图传输入：3334
+- Reflex 内部视频 WS：8765
+- Reflex Web 页面：默认 3000（以 reflex run 输出为准）
+
+## 图传链路说明
+
+发送端（SharkDataSever 或真实设备）将 HEVC 分片通过 UDP 3334 发入客户端。
+
+在 reflex-cil 内部：
+
+- video_server.py
+	- 重组 UDP 分片为完整 HEVC 帧
+	- 调用 ffmpeg 转码为浏览器可播放的分片 MP4（H.264）
+	- 通过 WebSocket 8765 广播给页面
+- assets/video-player.js
+	- 使用 MSE 接收并追加视频数据
+	- 渲染到页面左上图传区域
+
+## 备注
+
+- 若图传无画面，优先检查：
+	- ffmpeg 是否可执行
+	- 3334 是否有 UDP 包
+	- 8765 是否有二进制数据输出
+	- 浏览器控制台中 VideoPlayer 日志

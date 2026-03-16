@@ -147,7 +147,7 @@ def _write_hevc_frame(frame: bytes) -> None:
 
 # ── UDP receiver / frame reassembly ───────────────────────────────────────────
 # {frame_id: {"total": int, "received": int, "slices": dict[int, bytes], "ts": float}}
-_frame_buf: dict = {}
+_frame_buf: dict = {}  # 暂存frame_id到分片数据的字典
 
 
 def _cleanup_frames() -> None:
@@ -157,35 +157,35 @@ def _cleanup_frames() -> None:
         del _frame_buf[fid]
 
 
-def _ingest_packet(data: bytes) -> None:
+def _ingest_packet(data: bytes) -> None:  # 目标：处理一个UDP包，更新对应帧的重组状态，并在完成时写入FFmpeg
     if len(data) < 9:
         return
 
-    frame_id = struct.unpack_from(">H", data, 0)[0]
-    slice_id = struct.unpack_from(">H", data, 2)[0]
-    total = struct.unpack_from(">I", data, 4)[0]
-    payload = data[8:]
+    frame_id = struct.unpack_from(">H", data, 0)[0]  # 帧编号
+    slice_id = struct.unpack_from(">H", data, 2)[0]  # 分片序号
+    total = struct.unpack_from(">I", data, 4)[0]  # 当前帧总字节数
+    payload = data[8:]  # 当前包的有效负载（可以用内存视图来优化）
 
     if total <= 0 or total > MAX_FRAME_BYTES or not payload:
         return
 
-    if frame_id not in _frame_buf:
-        if len(_frame_buf) >= MAX_BUFFERED_FRAMES:
-            oldest = min(_frame_buf, key=lambda k: _frame_buf[k]["ts"])
-            del _frame_buf[oldest]
-        _frame_buf[frame_id] = {
+    if frame_id not in _frame_buf:  # 若不在，则添加的逻辑
+        if len(_frame_buf) >= MAX_BUFFERED_FRAMES:  # 若buffer已满，则丢弃最旧的一帧
+            oldest = min(_frame_buf, key=lambda k: _frame_buf[k]["ts"])  # 这里min取的是最旧的frame_id
+            del _frame_buf[oldest]  # 删除最旧的一帧
+        _frame_buf[frame_id] = {  # 初始化新帧的字典
             "total": total,
             "received": 0,
             "slices": {},
             "ts": time.monotonic(),
         }
 
-    frame = _frame_buf[frame_id]
-    if frame["total"] != total:
+    frame = _frame_buf[frame_id]  # 获取当前帧的字典
+    if frame["total"] != total:  # 若帧的总大小不匹配，则丢弃该帧
         del _frame_buf[frame_id]
         return
 
-    frame["ts"] = time.monotonic()
+    frame["ts"] = time.monotonic()  # 更新最后接收时间戳
 
     if slice_id not in frame["slices"]:
         frame["slices"][slice_id] = payload
