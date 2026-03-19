@@ -1,5 +1,5 @@
 # PIONEER-client
-
+## _注意：本版本已经弃用！！！_  
 PIONEER-client 是 RoboMaster 自定义客户端实现，基于 Reflex + MQTT + Protobuf，包含：
 
 - 协议桥接与界面联动
