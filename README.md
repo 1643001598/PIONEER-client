@@ -10,14 +10,14 @@ PIONEER-client 是 RoboMaster 自定义客户端实现，基于 Reflex + MQTT + 
 
 - debug/
 	- debug_video.py
-	- 用于调试图传链路：监听 UDP 3334，并作为客户端连接 WS 8765 打印数据摘要
+	- 用于调试图传链路：监听 UDP 3334，并作为客户端连接 WS 8765 打印数据摘要。
 - protocol/
 	- messages.proto
 	- messages_pb2.py
 	- Python 侧协议定义
 - reflex-cil/
 	- Reflex 客户端工程
-	- 包含 UI、MQTT 协议桥、视频服务、静态资源
+	- 包含 UI、MQTT 协议桥、视频服务、静态资源。
 - require.md
 	- 客户端行为要求说明
 
