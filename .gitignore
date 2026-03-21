@@ -2,3 +2,7 @@ old
 backend/PIONEER-client.code-workspace
 backend/PIONEER-client/.vscode
 unit-test
+codebuddylog/
+fix.md
+Docs/
+**/__pycache__/**
