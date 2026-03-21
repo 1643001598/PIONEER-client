@@ -18,7 +18,7 @@ import queue
 # from collections import namedtuple
 from dataclasses import dataclass
 from typing import Callable, Dict, Any
-from protobuf_models import DOWN_TOPIC2MODEL_MAP
+from protocol.protobuf_models import DOWN_TOPIC2MODEL_MAP
 from google.protobuf.json_format import MessageToDict
 
 TOTAL_TIME = 420  # 比赛总时长，单位为秒
